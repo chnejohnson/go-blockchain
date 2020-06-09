@@ -104,7 +104,7 @@ func (chain *Blockchain) FindUTXO(address string) []TxOutput {
 	for _, utx := range unspentTransactions {
 		for _, out := range utx.Outputs {
 			if out.CanBeUnlocked(address) {
-				UTXOs = append(UTXOs)
+				UTXOs = append(UTXOs, out)
 			}
 		}
 	}
@@ -138,7 +138,7 @@ Work:
 	return accumulated, unspendOuts
 }
 
-// FindUnspentTransactions 不知道在幹嘛的超難函式
+// FindUnspentTransactions find the transactions which have unspent output
 func (chain *Blockchain) FindUnspentTransactions(address string) []Transaction {
 	var unspentTxs []Transaction // return value
 	spentTXOs := make(map[string][]int)
