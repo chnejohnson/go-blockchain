@@ -145,15 +145,20 @@ func (cli *CommandLine) printChain() {
 	defer chain.Database.Close()
 	iter := chain.CreateIterator()
 
+	// 先印出最新的區塊，最後一個區塊是創世區塊
 	for {
 		block := iter.Next()
 		fmt.Printf("----------------\n")
-		fmt.Printf("Previous Hash: %x\n", block.PrevHash)
+		// fmt.Printf("Previous Hash: %x\n", block.PrevHash)
+
 		fmt.Printf("Hash: %x\n", block.Hash)
-		fmt.Printf("Nonce: %d\n", block.Nonce)
+		// fmt.Printf("Nonce: %d\n", block.Nonce)
+		fmt.Printf("Transactions length: %d\n", len(block.Transactions))
+
+		fmt.Printf("Inputs length and Outputs length: %d, %d\n", len(block.Transactions[0].Inputs), len(block.Transactions[0].Outputs))
 
 		pow := blockchain.NewProof(block)
-		fmt.Printf("Target: %x\n", pow.Target)
+		// fmt.Printf("Target: %x\n", pow.Target)
 		fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))
 		fmt.Println()
 

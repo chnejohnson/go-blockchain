@@ -128,6 +128,7 @@ Work:
 				accumulated += out.Value
 				unspendOuts[txID] = append(unspendOuts[txID], outIdx)
 
+				// 當 acc 超過輸入的金額就停止遞迴，只輸出夠用的 unspendOuts
 				if accumulated >= amount {
 					break Work
 				}
@@ -140,7 +141,7 @@ Work:
 
 // FindUnspentTransactions find the transactions which have unspent output
 func (chain *Blockchain) FindUnspentTransactions(address string) []Transaction {
-	var unspentTxs []Transaction // return value
+	var unspentTxs []Transaction
 	spentTXOs := make(map[string][]int)
 
 	iter := chain.CreateIterator()
