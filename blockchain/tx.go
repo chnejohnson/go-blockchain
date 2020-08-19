@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"bytes"
+	"encoding/gob"
 
 	"github.com/go-blockchain/wallet"
 )
@@ -12,6 +13,11 @@ type TxInput struct {
 	Out       int
 	Signature []byte
 	PubKey    []byte
+}
+
+// TxOutputs has a list of TxOutput
+type TxOutputs struct {
+	Outputs []TxOutput
 }
 
 // TxOutput has Value which is the transaction token,
@@ -30,6 +36,17 @@ func NewTXOutput(value int, address string) *TxOutput {
 	return txo
 }
 
+// DeserializeOutputs turn bytes back to TxOutputs
+func DeserializeOutputs(data []byte) TxOutputs {
+	var outputs TxOutputs
+	decode := gob.NewDecoder(bytes.NewReader(data))
+	err := decode.Decode(&outputs)
+	Handle(err)
+	return outputs
+}
+
+// type TxInput
+
 // UsesKey check output's pubKeyHash is the same as input public key
 func (in *TxInput) UsesKey(pubKeyHash []byte) bool {
 	// hashing the input public key
@@ -37,6 +54,8 @@ func (in *TxInput) UsesKey(pubKeyHash []byte) bool {
 
 	return bytes.Compare(lockingHash, pubKeyHash) == 0
 }
+
+// type TxOutput
 
 // Lock get address's public key, and assign into output's PubKeyHash
 func (out *TxOutput) Lock(address []byte) {
@@ -48,4 +67,15 @@ func (out *TxOutput) Lock(address []byte) {
 // IsLockedWithKey check the pubKeyHash is equal to output's PubKeyHash so that you can unlock output with the key
 func (out *TxOutput) IsLockedWithKey(pubKeyHash []byte) bool {
 	return bytes.Compare(out.PubKeyHash, pubKeyHash) == 0
+}
+
+// type TxOutputs
+
+// Serialize turn TxOutputs into bytes
+func (outs *TxOutputs) Serialize() []byte {
+	var buffer bytes.Buffer
+	encode := gob.NewEncoder(&buffer)
+	err := encode.Encode(outs)
+	Handle(err)
+	return buffer.Bytes()
 }

@@ -147,108 +147,55 @@ func (chain *Blockchain) VerifyTransaction(tx *Transaction) bool {
 	return tx.Verify(prevTXs)
 }
 
-// FindUTXO return a slice of unspent Outputs
-func (chain *Blockchain) FindUTXO(pubKeyHash []byte) []TxOutput {
-	var UTXOs []TxOutput
-	unspentTransactions := chain.FindUnspentTransactions(pubKeyHash)
-
-	for _, utx := range unspentTransactions {
-		for _, out := range utx.Outputs {
-			if out.IsLockedWithKey(pubKeyHash) {
-				UTXOs = append(UTXOs, out)
-			}
-		}
-	}
-
-	return UTXOs
-}
-
-// FindSpendableOutputs take address we want to check and amount we want to send
-func (chain *Blockchain) FindSpendableOutputs(pubKeyHash []byte, amount int) (int, map[string][]int) {
-	unspendOuts := make(map[string][]int)
-	unspentTxs := chain.FindUnspentTransactions(pubKeyHash)
-	accumulated := 0
-
-Work:
-	for _, utx := range unspentTxs {
-		// EncodeToString for turning  txID ([]byte) into map key (string)
-		txID := hex.EncodeToString(utx.ID)
-
-		for outIdx, out := range utx.Outputs {
-			if out.IsLockedWithKey(pubKeyHash) && accumulated < amount {
-				accumulated += out.Value
-				unspendOuts[txID] = append(unspendOuts[txID], outIdx)
-
-				// 當 acc 超過輸入的金額就停止遞迴，只輸出夠用的 unspendOuts
-				if accumulated >= amount {
-					break Work
-				}
-			}
-		}
-	}
-
-	return accumulated, unspendOuts
-}
-
-// FindUnspentTransactions find the transactions which have unspent output
-func (chain *Blockchain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
-	var unspentTxs []Transaction
+// FindUTXO return mapping of address to TxOutputs
+func (chain *Blockchain) FindUTXO() map[string]TxOutputs {
+	UTXO := make(map[string]TxOutputs)
 	spentTXOs := make(map[string][]int)
 
 	iter := chain.CreateIterator()
 
 	for {
-		// Blocks Looping
 		block := iter.Next()
 
-		// Transactions Looping
 		for _, tx := range block.Transactions {
 			txID := hex.EncodeToString(tx.ID)
 
 		Outputs:
-			// Outputs Looping
 			for outIdx, out := range tx.Outputs {
 				if spentTXOs[txID] != nil {
-					// In the specific transaction ID, loop all index of spent Outputs
 					for _, spentOut := range spentTXOs[txID] {
-						// if spentOut equal to the output's index, the output is spent,
-						// so that continue the loop because we do not find the unspent transactions
 						if spentOut == outIdx {
 							continue Outputs
 						}
 					}
 				}
 
-				// 檢查是否有找到 unpent Transaction
-				if out.IsLockedWithKey(pubKeyHash) {
-					// find the unspent Transaction when the output can be unlocked
-					unspentTxs = append(unspentTxs, *tx)
-				}
+				outs := UTXO[txID]
+				outs.Outputs = append(outs.Outputs, out)
+				UTXO[txID] = outs
 			}
 
-			// Inputs Looping (except for Coinbase)
 			if tx.IsCoinbase() == false {
 				for _, in := range tx.Inputs {
-					// 更新 spent Transaction mapping
-					if in.UsesKey(pubKeyHash) {
-						inTxID := hex.EncodeToString(in.ID)
-						spentTXOs[inTxID] = append(spentTXOs[inTxID], in.Out)
-					}
+
+					inTxID := hex.EncodeToString(in.ID)
+					spentTXOs[inTxID] = append(spentTXOs[inTxID], in.Out)
+
 				}
 			}
 		}
 
-		// Blocks Looping until meet genesis block
 		if len(block.PrevHash) == 0 {
 			break
 		}
 	}
 
-	return unspentTxs
+	return UTXO
+
 }
 
 // AddBlock add new block in Blockchain's Block
-func (chain *Blockchain) AddBlock(transactions []*Transaction) {
+func (chain *Blockchain) AddBlock(transactions []*Transaction) *Block {
 	var lastHash []byte
 
 	err := chain.Database.View(func(txn *badger.Txn) error {
@@ -281,6 +228,8 @@ func (chain *Blockchain) AddBlock(transactions []*Transaction) {
 		return err
 	})
 	Handle(err)
+
+	return newBlock
 
 }
 
