@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/gob"
 	"log"
 )
@@ -15,20 +14,18 @@ type Block struct {
 	Nonce        int
 }
 
-// HashTransactions hash the block's slice of Transaction
+// HashTransactions returns root node's data of the merkle tree
 func (b *Block) HashTransactions() []byte {
 	var txHashes [][]byte
-	var txHash [32]byte
 
-	// txHashes is a slice of all tx.ID in the block
+	// 將所有 tx 序列化，加入到 txHashes
 	for _, tx := range b.Transactions {
-		txHashes = append(txHashes, tx.ID)
+		txHashes = append(txHashes, tx.Serialize())
 	}
 
-	// txHash is the hash of transaction which is encrypted from txHashes
-	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
-	return txHash[:]
+	tree := NewMerkleTree(txHashes)
 
+	return tree.RootNode.Data
 }
 
 // CreateBlock create a new Block type

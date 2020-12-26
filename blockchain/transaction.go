@@ -26,14 +26,20 @@ type Transaction struct {
 // CoinbaseTx create the first transaction for gensis block
 func CoinbaseTx(to, data string) *Transaction {
 	if data == "" {
-		data = fmt.Sprintf("Coins to %s", to)
+		randData := make([]byte, 24)
+		_, err := rand.Read(randData)
+		if err != nil {
+			log.Panic(err)
+		}
+		data = fmt.Sprintf("%x", randData)
 	}
 
 	txin := TxInput{[]byte{}, -1, nil, []byte(data)}
+	// 獎勵 20 token 給第一個交易
 	txout := NewTXOutput(100, to)
 
 	tx := Transaction{nil, []TxInput{txin}, []TxOutput{*txout}}
-	tx.SetID()
+	tx.ID = tx.Hash()
 
 	return &tx
 }
@@ -122,19 +128,6 @@ func (tx *Transaction) Hash() []byte {
 
 	hash = sha256.Sum256(txCopy.Serialize())
 	return hash[:]
-}
-
-// SetID generate transaction's ID with sha256 in 32 bytes
-func (tx *Transaction) SetID() {
-	var encoded bytes.Buffer
-	var hash [32]byte
-
-	encode := gob.NewEncoder(&encoded)
-	err := encode.Encode(tx)
-	Handle(err)
-
-	hash = sha256.Sum256(encoded.Bytes())
-	tx.ID = hash[:]
 }
 
 // IsCoinbase check whether the transaction is coinbase transaction
